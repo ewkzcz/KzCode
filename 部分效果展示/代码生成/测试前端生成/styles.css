@@ -1,0 +1,217 @@
+/* ===== 全局样式 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #f5f7fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== 头部导航 ===== */
+header {
+    background: linear-gradient(135deg, #1a2a6c, #2d4373);
+    color: #fff;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+header h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: #ddd;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    transition: background 0.3s, color 0.3s;
+}
+
+nav a:hover,
+nav a.active {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+}
+
+/* ===== 主体 ===== */
+main {
+    flex: 1;
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    width: 100%;
+}
+
+section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: transform 0.2s;
+}
+
+section:hover {
+    transform: translateY(-2px);
+}
+
+h2 {
+    font-size: 1.8rem;
+    color: #1a2a6c;
+    margin-bottom: 1rem;
+    border-bottom: 3px solid #e0e7ff;
+    padding-bottom: 0.5rem;
+}
+
+h3 {
+    font-size: 1.3rem;
+    color: #2d4373;
+    margin: 1.2rem 0 0.6rem;
+}
+
+p {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: #444;
+}
+
+/* ===== 时间线 ===== */
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+    margin: 1.5rem 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #1a2a6c;
+    border-radius: 2px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.8rem;
+    padding-left: 1.2rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -2.35rem;
+    top: 0.4rem;
+    width: 14px;
+    height: 14px;
+    background: #1a2a6c;
+    border-radius: 50%;
+    border: 3px solid #e0e7ff;
+}
+
+.timeline-item .year {
+    font-weight: 700;
+    color: #1a2a6c;
+    font-size: 1.1rem;
+}
+
+/* ===== 架构图卡片 ===== */
+.arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.2rem;
+    margin: 1.5rem 0;
+}
+
+.arch-card {
+    background: #f0f4ff;
+    border-radius: 8px;
+    padding: 1.2rem;
+    text-align: center;
+    border: 1px solid #d0d9ff;
+    transition: box-shadow 0.3s;
+}
+
+.arch-card:hover {
+    box-shadow: 0 4px 15px rgba(26,42,108,0.15);
+}
+
+.arch-card .icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.arch-card h4 {
+    color: #1a2a6c;
+    margin-bottom: 0.3rem;
+}
+
+/* ===== 进度条 ===== */
+.progress-item {
+    margin: 1.2rem 0;
+}
+
+.progress-item .label {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+}
+
+.progress-bar {
+    height: 12px;
+    background: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1a2a6c, #3b5a9c);
+    border-radius: 6px;
+    transition: width 1s ease;
+    width: 0%;
+}
+
+/* ===== 页脚 ===== */
+footer {
+    text-align: center;
+    padding: 1.2rem;
+    background: #1a2a6c;
+    color: #aaa;
+    font-size: 0.9rem;
+    margin-top: 2rem;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 600px) {
+    nav ul {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    header h1 {
+        font-size: 1.4rem;
+    }
+    section {
+        padding: 1.2rem;
+    }
+}

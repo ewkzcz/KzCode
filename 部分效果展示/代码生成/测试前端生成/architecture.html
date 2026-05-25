@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent 开发 - 架构设计</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Agent 开发探索</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">首页</a></li>
+                <li><a href="history.html">发展历程</a></li>
+                <li><a href="architecture.html">架构设计</a></li>
+                <li><a href="process.html">当前进程</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <h2>Agent 核心架构</h2>
+            <p>现代 Agent 通常采用模块化架构，将感知、推理、规划、记忆和行动等能力解耦为独立组件。</p>
+        </section>
+
+        <section class="architecture-diagram">
+            <div class="arch-component">
+                <h3>🧠 感知模块</h3>
+                <p>接收来自环境的多模态输入（文本、图像、音频等），并将其转换为内部表示。</p>
+            </div>
+            <div class="arch-component">
+                <h3>⚙️ 推理引擎</h3>
+                <p>基于大语言模型或符号推理器，对当前状态进行逻辑分析、因果推断与决策制定。</p>
+            </div>
+            <div class="arch-component">
+                <h3>🗺️ 规划模块</h3>
+                <p>将高层目标分解为可执行的子任务序列，支持动态重规划以应对环境变化。</p>
+            </div>
+            <div class="arch-component">
+                <h3>💾 记忆系统</h3>
+                <p>包括短期工作记忆和长期记忆（如向量数据库），存储历史经验、任务状态和知识。</p>
+            </div>
+            <div class="arch-component">
+                <h3>🛠️ 行动执行</h3>
+                <p>调用外部工具（API、浏览器、代码解释器）或控制物理实体，将决策转化为环境操作。</p>
+            </div>
+            <div class="arch-component">
+                <h3>🔁 反馈循环</h3>
+                <p>持续监控行动结果并与预期对比，通过强化学习或经验回放不断优化策略。</p>
+            </div>
+        </section>
+
+        <section>
+            <h3>典型架构模式</h3>
+            <ul>
+                <li><strong>ReAct</strong>：将推理与行动交错执行，每步产生思考链并执行一个动作。</li>
+                <li><strong>MetaGPT</strong>：模拟软件团队，多个 Agent 角色（产品经理、架构师、工程师）协作完成复杂项目。</li>
+                <li><strong>AutoGPT</strong>：自主分解长周期任务，循环执行“思考-行动-观察”循环。</li>
+            </ul>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2026 Agent 开发项目</p>
+    </footer>
+    <script src="main.js"></script>
+</body>
+</html>

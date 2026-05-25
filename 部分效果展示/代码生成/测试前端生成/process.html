@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent 开发 - 当前进程</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="script.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Agent 开发探索</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">首页</a></li>
+                <li><a href="history.html">发展历程</a></li>
+                <li><a href="architecture.html">架构设计</a></li>
+                <li><a href="process.html" class="active">当前进程</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <h2>Agent 开发当前进程</h2>
+            <p>2025-2026 年，LLM Agent 正从研究走向工程落地，以下是最新动态与核心方向。</p>
+        </section>
+
+        <section class="progress-cards">
+            <div class="card">
+                <h3>🔗 多 Agent 协作框架</h3>
+                <p>AutoGen、CrewAI、MetaGPT 等框架使多个 Agent 能够分工协作，共同完成复杂任务，如软件开发、研究报告撰写。</p>
+            </div>
+            <div class="card">
+                <h3>🧰 工具调用标准化</h3>
+                <p>OpenAI Function Calling、Anthropic Tool Use 以及 MCP（模型上下文协议）推动了 Agent 调用外部 API/数据库的标准化。</p>
+            </div>
+            <div class="card">
+                <h3>📚 长期记忆与知识管理</h3>
+                <p>结合 RAG、向量数据库（Pinecone、Chroma）与结构化记忆，Agent 能够在跨会话任务中保持上下文与学习成果。</p>
+            </div>
+            <div class="card">
+                <h3>🧪 安全与对齐研究</h3>
+                <p>红队测试、约束解码、审计日志等措施被广泛采用，以确保 Agent 的行为符合人类意图并避免意外后果。</p>
+            </div>
+            <div class="card">
+                <h3>🌐 端侧部署与边缘 Agent</h3>
+                <p>通过量化、蒸馏与硬件加速，轻量级 Agent 开始运行在手机、IoT 设备上，实现实时本地智能。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>数据一览</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-number" id="paperCount">0</span>
+                    <span class="stat-label">相关论文（2025）</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="projectCount">0</span>
+                    <span class="stat-label">开源项目</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="companyCount">0</span>
+                    <span class="stat-label">布局公司</span>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2026 Agent 开发探索</p>
+    </footer>
+</body>
+</html>
