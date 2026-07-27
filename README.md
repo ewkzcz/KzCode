@@ -1,254 +1,298 @@
-# KzCode Desktop
+# KzCode：本地代码智能体桌面应用
 
-KzCode 是一个**本地代码智能体（Coding Agent）桌面应用**，也是您的本地代码协作助手。灵感来自 Claude Code、Codex 等 AI 编程工具。
+**KzCode** - 让 AI 成为你的本地代码助手 🚀
 
-KzCode 围绕 **Agent Harness** 思想设计：将模型推理、工具调用、上下文管理、记忆系统、安全边界和运行审计整合成一条可复盘、可恢复、可评测的执行链路。在此基础上，通过 Electron 提供原生桌面体验，让您在自己的代码仓库中获得安全、可控、高效的人工智能协作。
+> "模型决定 Agent 的上限，Harness 决定 Agent 的下限"
 
+## 项目介绍
 
+KzCode 是一个**本地优先等代码智能体（Coding Agent）桌面应用**，灵感来自 Claude Code 等 AI 工具。它不是简单"聊天 + 文件读写"组合，而是完整的 **Agent 运行时系统（Agent Harness）**。
 
-## 项目总览
+### 核心设计理念
+
+KzCode 围绕 **Agent Harness** 思想构建，将多模型接入、工具调用、上下文管理、记忆系统、安全边界和运行审计整合成一条**可中断、可恢复、可评测**的执行链路。
+
+**什么是 Agent Harness？**
+
+Agent Harness 是包裹模型的运行时脚手架——模型只负责"下一步决策"，其余全是 Harness 的职责：
+
+- **Agent Loop（循环与熔断）**：控制执行流程，防止死循环
+- **工具系统（注册/校验/沙箱）**：提供外部能力的安全执行
+- **上下文管理（压缩/记忆/隔离）**：治理有限的上下文窗口
+- **权限与安全（确认、Hook 拦截）**：确定性护栏，不依赖模型"自觉"
+- **可观测（trace/日志/评测）**：每步可回放，失败可追溯
+- **持久化（checkpoint/会话恢复）**：长任务可中断、可续跑
+
+> "模型决定 Agent 的上限，Harness 决定 Agent 的下限"
+
+### 解决的核心问题
+
+在代码仓库的长链路任务中，KzCode 解决以下工程问题：
+
+| 问题 | 传统方案的不足 | KzCode 的解决方案 |
+|------|---------------|------------------|
+| **上下文膨胀** | 聊天历史无限累积，很快撑爆窗口 | 分层预算裁剪（当前请求永不裁等）；滑动窗口；LLM 结构化摘要总结 |
+| **重复读取** | 每次都重新读同一文件，浪费 token | 文件缓存 + 摘要机制等 |
+| **状态丢失** | 会话中断后无法恢复现场 | Checkpoint 机制：保存任务快照、运行时身份校验；todo 清单文件等落盘 |
+| **工具副作用不可控** | 模型可能执行危险操作 | 多层安全护栏：沙箱隔离、审批流程、黑白名单 |
+| **结果难复盘** | 出错后无法追溯完整执行链路 | trace.jsonl 记录运行轨迹 |
+
+### 系统架构
 
 ```
-用户输入（终端 / UI）
+用户输入（UI / 终端）
         │
         ▼
 ┌─────────────────────────────────────────────┐
-│              前端（Electron + Vue）           │
-│  • 桌面文件系统访问   • 会话管理   • 流式对话   │
-│  • 审批面板          • Diff 对比  • 多主题     │
-│  • 项目文件树        • Git 集成   • 内置编辑器  │
+│         前端（Electron + Vue 3）              │
+│  • 流式对话      • 审批面板   • Diff 预览     │
+│  • 文件树        • Git 集成   • 主题切换      │
+│  • @引用文件     • 内置编辑器                 │
 └─────────────────────────────────────────────┘
-        │ HTTP + SSE（IPC / Web）
+        │ HTTP + SSE（流式事件）
         ▼
 ┌─────────────────────────────────────────────┐
-│          后端（FastAPI + Agent Harness）      │
-│  • 主控制循环        • 上下文管理（预算裁剪）    │
-│  • 分层记忆          • 工具调用与安全治理       │
-│  • Checkpoint/Resume • 运行审计与工件           │
-│  • 多模型聚合          • @引用文件上下文         │
+│       后端（FastAPI + Agent Harness）         │
+│  ┌─────────────────────────────────────┐    │
+│  │      Agent Loop（主控制循环）        │    │
+│  │  感知 → 决策 → 行动 → 记录 → 循环    │    │
+│  └─────────────────────────────────────┘    │
+│                                              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │上下文管理│  │分层记忆  │  │工具系统  │  │
+│  │预算裁剪  │  │失效检测  │  │安全隔离  │  │
+│  └──────────┘  └──────────┘  └──────────┘  │
+│                                              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │Checkpoint│  │运行工件  │  │多模型    │  │
+│  │恢复机制  │  │trace审计 │  │聚合      │  │
+│  └──────────┘  └──────────┘  └──────────┘  │
 └─────────────────────────────────────────────┘
         │
         ▼
     本地代码仓库
 ```
 
+### 关键特性
+
+- **✅ 本地优先**：代码不离开本地，隐私可控
+- **✅ 多模型支持**：OpenAI / Anthropic / DeepSeek / Ollama，统一接口
+- **✅ 分层记忆**：工作记忆 + 会话记忆 + 持久记忆
+- **✅ 上下文治理**：结果清理、压缩、LLM 结构化摘要、滑动窗口
+- **✅ 安全隔离**：沙箱、审批、黑白名单、环境变量过滤
+- **✅ 可恢复**：Checkpoint 外部化/持久化；todo清单等落盘；确保中断后可续跑
+- **✅ 可审计**：trace.jsonl 记录完整轨迹
+- **✅ 流式体验**：SSE 实时推送工具执行、审批请求、进度通知
 
 
-## 后端：Agent Harness 核心
 
-后端基于 **FastAPI**，实现了一个完整的本地代码智能体运行框架（Harness）。它的设计目标不是"接一个模型、配几个工具"，而是解决代码仓库长链路任务中的核心工程问题：**上下文膨胀、重复读取、状态丢失、工具副作用不可控、结果难复盘**。
+## 后端：Agent Harness 架构
 
-### 1、架构与主循环
+后端基于 **FastAPI**，实现了一个完整的本地代码智能体运行框架（Harness）。它的设计目标不是"接一个模型、配几个工具"，而是解决代码仓库长链路任务中的核心工程问题。
 
-KzCode 的后端是一个有状态、有边界、可恢复的 Agent 运行时。每轮循环经历**感知 → 决策 → 行动 → 记录**四个阶段：
+### 一、Agent Loop：主控制循环
+
+Agent Loop 是整个系统的心脏，负责驱动"感知 → 决策 → 行动 → 记录"的闭环。
+
+#### 核心流程
 
 ```python
-# 主控制循环
+# runtime.py 核心循环
 while tool_steps < max_steps and attempts < max_attempts:
-    prompt, metadata = build_prompt_and_metadata(user_message)    # 1. 感知：拼 prompt
-    raw = model_client.complete(prompt, max_new_tokens)           # 2. 决策：模型输出
-    kind, payload = parse(raw)                                    # 3. 解析：工具调用还是最终答案
+    # 1. 感知：组装上下文
+    prompt, metadata = build_prompt_and_metadata(user_message)
+    
+    # 2. 决策：模型输出
+    raw = model_client.complete(prompt, max_new_tokens)
+    
+    # 3. 解析：工具调用还是最终答案
+    kind, payload = parse(raw)
+    
     if kind == "tool":
-        result = run_tool(payload.name, payload.args)             # 4. 行动：执行工具
-        update_memory_and_history(result)                         # 5. 记录：回写历史+记忆
+        # 4. 行动：执行工具
+        result = run_tool(payload.name, payload.args)
+        
+        # 5. 记录：回写历史 + 更新记忆
+        update_memory_and_history(result)
         save_checkpoint_and_artifacts()
         continue
+    
     # kind == "final" → 返回最终答案
+    return payload.text
 ```
 
+#### 四重熔断机制
 
+防止 Agent 失控烧 token：
 
-#### 缓存策略
-
-系统提示词（角色 + 工具清单 + 工作区基线）相对稳定，生成快照并记录工作区指纹。
-
-每次运行前检查工作区指纹（Git 状态 + 文件树 + 项目文档）和工具注册表是否变化，无变化时复用缓存的系统提示词，减少重复构建开销。
-
-
+| 熔断类型 | 触发条件 | 处理策略 |
+|---------|---------|---------|
+| **最大步数** | `tool_steps >= max_steps` | 硬性截断 |
+| **格式错误** | 模型连续输出无效格式 | 累计达上限后停止 |
+| **工具失败** | 同一工具连续失败 | 按工具名+参数计数，达上限停止 |
+| **API 错误** | 模型调用异常（超时/限流） | 指数退避重试，耗尽后终止 |
 
 #### 重试策略
 
-| 重试类型 | 触发条件 | 策略 |
-|----------|----------|------|
-| 不可恢复错误 | 认证/鉴权失败、模型不可用等 | **直接终止**，不重试 |
-| API 错误 | 模型调用异常（超时/限流等） | 指数退避 1s→2s→4s→8s→9s，连续失败达最大步数后停止 |
-| 格式错误 | 模型返回无效格式 | 递增计数，达上限后停止 |
-| 工具失败 | 工具执行返回错误 | 按工具名+参数分别计数和全局计数，任一达上限后停止该方向 |
-| 降级 | 重试耗尽 | 如有上一次成功的工具结果，生成降级回复代替报错 |
+- API 错误 → 指数退避：1s → 2s → 4s → 8s → 16s
+- 格式错误 → 递增计数，达上限后停止
+- 工具失败 → 分别计数（全局 + 单工具），任一达上限停止
+- 不可恢复错误（认证失败/模型不可用）→ 直接终止，不重试
+
+#### 缓存策略
+
+系统提示词（角色 + 工具清单 + 工作区基线）相对稳定，生成快照并记录工作区指纹（Git 状态 + 文件树 + 项目文档）。每次运行前检查指纹，无变化时复用缓存，减少重复构建开销。
 
 
 
-### 2、上下文管理
+### 二、上下文管理：渐进式披露与上下文管理
 
-KzCode 将 prompt 拆成**系统提示词**（角色 + 工具清单 + 工作区基线，相对稳定）和**用户提示词**（每轮动态重建），由统一的组装器拼接。
+**核心思想**：让模型在有限窗口里看到最有效的决策信息，而不是无脑堆砌。
 
-#### 用户提示词结构
+#### Prompt 结构
 
-按固定顺序拼接 6 个片段，稳定基线放前面、最新请求放最后：
+KzCode 将 prompt 拆成稳定基线和动态重建，通过固定长前缀，提高缓存命中率：
 
-| 片段 | 内容 | 稳定性 | 能否裁剪 |
-|------|------|--------|----------|
-| **运行上下文** | 工作区信息（含文件树）、重试次数、checkpoint 状态 | 稳定 | 不参与 |
-| **执行进度** | 当前任务完成了什么、还剩什么 | 动态 | 不参与 |
-| **记忆** | 工作记忆 + 文件缓存（动态，完整内容）+ 文件摘要（较稳定，缓存裁剪后降级） | 混合 | 可裁（第三顺位） |
-| **相关记忆** | 从记忆中召回与当前任务相关的条目 | 动态 | 可裁（最先裁） |
-| **历史** | 对话历史（滑动窗口 + 压缩） | 动态 | 可裁（第二顺位） |
-| **当前请求** | 用户最新输入 | 极动态 | **永不裁** |
+| 层级 | 片段名称     | 内容                                                 | 稳定性 |
+| ---- | ------------ | ---------------------------------------------------- | ------ |
+| 1    | **稳定前缀** | 系统角色、全局规则、用户固定偏好、核心任务、关键约束 | 极稳定 |
+| 2    | 运行上下文   | 工作区文件树、checkpoint状态                         | 偏稳定 |
+| 3    | 摘要、notes  | 最近文件清单 + 文件摘要 + 工具结果摘要 + 任务状态    | 混合   |
+| 5    | 相关记忆     | 从历史笔记召回的 Top 3 条                            | 动态   |
+| 6    | 对话历史     | 对话历史（滑动窗口 + LLM 结构化压缩）                | 动态   |
+| 7    | 当前请求     | 用户最新输入                                         | 极动态 |
 
+**设计原则**：
 
-
-#### 预算控制
-
-- 默认总预算 **80000 字符**。超预算时按**相关记忆 → 历史 → 记忆**顺序逐个收缩，各片段触底后切下一个，直至满足预算。
-- 运行上下文、执行进度、当前请求三个片段不参与裁剪。
-- **结构化历史摘要**：当历史段被压缩到下限（5000 字符）时，提示 AI 输出 `<summary>{"user_goals":["…"],"completed_actions":["…"],"important_code_symbols":["…"],"open_issues":["…"]}</summary>` 生成结构化摘要替代原始长历史。摘要生成后注入后续上下文，正常情况下不触发。
-- 已读取文件缓存
-    - 每个文件最多保留 **3 个槽位**（不同行范围的读取结果），槽位间覆盖关系自动合并（新区间包含旧区间 → 替换）；
-    - 超 3 个槽位时最早槽位压缩到 200 字符摘要；
-    - 完整内容总上限 **10000 字符**，超出上下文预算或窗口后逐槽压缩（full → 1000 → 200 → 100）；
-    - 缓存中记录文件总行数（total_lines），AI 可据此精确调整读取范围，避免反复试探。
-
-- 标记淘汰的文件缓存：超出窗口后所有槽位直接到 100 字符；
-- 其余条目：最近 10 轮保留（1000 字符上限），超过上限或者窗口压缩到 100 字符。
-- **最近 20 轮文件变更摘要**：记录每轮工具执行后的文件变更（创建/修改/删除 + 变更行号范围），注入运行上下文供 AI 感知近期工作区变化。
-
-
-
-#### 工具结果与进度追踪
-
-每次工具执行后收集执行状态、影响文件列表、diff 预览等元数据：
-- 写入**对话历史**（供后续 prompt 使用）
-- 写入**审计日志** `trace.jsonl`（含耗时、安全事件）
-- 异常/失败状态沉淀为**记忆笔记**
-- **SSE 实时推送**到前端
-
-同时每步更新执行进度（已完成、进行中、阻塞点），注入 prompt 让模型感知进度，避免重复已完步骤。进度变化也通过 SSE 推送到前端。
-
-
-
-#### 异常快速失败
-
-以下情况直接终止，不重试：
-
-| 异常类型 | 触发条件 |
-|----------|----------|
-| 认证/鉴权错误 | 模型返回 401、invalid api key、unauthorized 等 |
-| 模型不可用 | 模型未配置或配额耗尽 |
-| API 重试超限 | 连续调用失败达最大步数 |
-| 格式重试超限 | 模型连续输出无效格式达最大步数 |
-| 工具连续失败 | 同一工具连续失败达上限 |
-
-
-
-#### 效果
-
-- 平均 prompt 长度从 6964 压缩至 5418，平均压缩率 **18%**，最高 **35%**。
-- 当前请求被裁坏率 **0%**。
-
-
-
-### 3、分层记忆系统
-
-KzCode 的记忆不是"聊天历史摘要"，而是**分层、可失效、工具驱动**的轻量工作记忆 + 长期事实沉淀。
-
-| 记忆层 | 存储内容 | 生命周期 |
-|--------|----------|----------|
-| **工作记忆** | 任务摘要、最近操作过的文件（上限 8 条） | 当前会话，跨轮保留 |
-| **文件缓存** | read_file 结果按文件分槽位存储（最多 3 个槽位/文件，覆盖合并）；AI 通过 `<file_plan>` 声明文件清单与行范围 | 多槽位多级压缩：<br/>1、新区间覆盖旧区间 → 替换合并；超 3 槽位 → 最早槽位压缩到 200 字符；<br/>2、超出上下文/窗口 → 逐槽压缩（1000 → 200 → 100）；<br/>3、标记淘汰且超出窗口 → 100 字符；<br/>4、迫不得已或文件更新后 → 逐出 |
-| **过程笔记** | 工具执行过程记录（上限 12 条，带标签和来源） | 当前会话，跨轮保留 |
-| **文件变更追踪** | 最近 20 轮文件变更摘要（创建/修改/删除 + 行号范围） | 滚动窗口，注入上下文 |
-| **持久记忆** | 项目约定、关键决策、依赖事实、用户偏好，存入 `.KzCode/memory/` | **跨会话**，自动沉淀 |
-
-
-
-#### 文件缓存与读取计划
-
-**读文件时**：完整内容按槽位进入文件缓存（每文件最多 3 槽位），同时记录文件总行数供 AI 参考。
-
-**`<file_plan>` 机制**：AI 在分析阶段输出结构化 JSON 声明需要读取的文件清单与行范围，系统自动批量读取。若请求范围已被现有槽位覆盖则跳过，否则按请求范围读取并添加为新槽位。后续可根据任务进展再次输出 `<file_plan>` 增补或释放文件。
-
-**缓存槽位管理**：
-
-1. **覆盖合并**：新区间完全包含旧区间 → 直接替换；旧区间包含新区间 → 跳过
-2. **最多 3 槽位/文件**：超出时最早槽位压缩到 200 字符摘要
-3. 完整内容总上限 5000 字符，超限时按槽位逐级压缩（full → 1000 → 200 → 100）
-4. 10 轮未引用 → 继续压缩到 200（如已是 200 则到 100）
-5. 被 AI 标记淘汰 + 超出窗口 → 所有槽位压缩到 100 字符
-6. 文件更新或压缩后仍超预算 → **彻底逐出**最不重要的文件
-
-**超时窗口**：
-
-- 文件被 write/patch → 所有槽位压缩到 200（不逐出）
-- AI 声明淘汰 → `needed_count × 1` 轮后压缩到 100
-- 未引用 → `needed_count × 2` 轮后压缩到 1000
-- 10 轮未引用 → 继续压缩到 200（如已是 200 则到 100）
-
-**写文件或修改文件后**：对应文件所有缓存槽位压缩到 200 字符摘要，淘汰标记清除。
-
-**下次会话恢复时**：批量校验所有摘要的指纹是否匹配当前文件内容，不匹配的直接丢弃。
-
-
+- 稳定的放前面
+- 变化的放后面
+- 当前请求放最后且永不压缩
 
 #### 近期文件变更追踪
 
-每次工具执行后，如果检测到工作区文件变化，记录变更信息并按轮次存储：
+每次工具执行后记录文件变更（记录行号范围：可验证锚点），保留最近 N 轮，注入运行上下文：
 
-- **记录内容**：文件路径、操作类型（`created`/`modified`/`deleted`）、变更行号范围（如 `1-10, 20-30`）
-- **窗口大小**：最近 **20 轮**
-- **注入方式**：通过 `recent_file_changes_text()` 注入到运行上下文中，格式如：
-  ```
-  最近 20 轮文件变更：
-    第 5 轮：
-      modified: src/main.py (10-15, 30-35)
-      created: src/utils.py (1-50)
-    第 4 轮：
-      deleted: src/old.py
-  ```
-- **目的**：让 AI 感知近期自己改了什么、改了哪里，避免在已修改的文件上重复操作或遗漏重要变更
+```
+最近 10 轮文件变更：
+  第 5 轮：
+    modified: src/main.py (10-15, 30-35)
+    created: src/utils.py (1-50)
+  第 4 轮：
+    deleted: src/old.py
+```
 
+让 AI 感知近期自己改了什么，避免重复操作。
 
+### 三、分层记忆系统：工作记忆 + 会话记忆 + 持久记忆
 
-#### 长期记忆自动沉淀
+KzCode 的记忆不是"聊天历史摘要"，而是**分层、可失效、工具驱动**的轻量记忆系统。
 
-当用户请求包含"记住/保存/记录"等持久化意图时，自动从最终答案中提取结构化事实，多步处理后写入磁盘：
+#### 三层记忆架构
 
-- **意图检测** — 匹配 `capture/remember/save/store/persist/note/记住/保存/记录/沉淀/长期记忆/持久记忆`
-- **格式匹配** — 从答案中逐行提取 4 种固定格式：项目约定、决策、依赖、偏好等
-- **拒绝过滤** — 空内容、含 API key/token/secret 等敏感信息、含 checkpoint 状态字段、含 stdout/stderr 等噪声输出，均不写入
-- **写入** — 存入 `.KzCode/memory/topics/` 目录，同名主题自动去重更新
+| 记忆层 | 生命周期 |
+|--------|----------|
+| **工作记忆** | 请求级 |
+| **会话记忆** | 会话级 |
+| **持久记忆** | **跨会话级** |
 
+#### 文件摘要失效检测
 
+**核心机制**：每个文件摘要绑定**内容指纹（freshness = 文件哈希）**
 
-#### 记忆检索
+**失效触发时机**：
 
-同时检索过程笔记和持久记忆，按 **标签精确匹配 > 关键词重叠数 > 时间新旧** 排序。不依赖向量模型，基于分词匹配。最多返回 3 条，无匹配时提示为空。
+1. **写入文件后**：`write_file` / `patch_file` 执行成功，主动调用 `invalidate_file_summary(path)`
+2. **下次会话恢复时**：批量校验所有摘要的指纹，不匹配的直接丢弃
+3. **组装提示词时**：实时比对哈希，失效的不注入
 
+#### 过程笔记与相关记忆召回
 
+**过程笔记**：工具执行过程中自动记录的短结论
 
-#### 效果
+```json
+{
+  "text": "Fixed logging format in runtime.py, changed INFO to DEBUG",
+  "tags": ["runtime.py", "logging", "patch"],
+  "source": "patch_file",
+  "created_at": "2026-07-27T10:30:27Z"
+}
+```
 
-- 开记忆后，后续对话阶段重复读文件次数从 **60 次降为 0 次**。
-- 平均工具步数从 1.0 降为 0，不再需要额外调用工具来确认已拿到的事实。
+**召回机制**：基于分词匹配，不依赖向量模型
 
+排序规则：**标签精确匹配 > 关键词重叠数 > 时间新旧**
 
+```python
+# 评分公式
+tag_score = 1 if query_tokens & note.tags else 0
+keyword_score = len(query_tokens & note.text.split())
+rank_key = (tag_score * 10 + keyword_score, note.created_at)
 
-### 4、工具调用与安全控制
+# 取 Top 3
+selected = sorted(notes, key=rank_key, reverse=True)[:3]
+```
 
-KzCode 将工具层视为**受控执行链**，而不是简单的函数映射。所有工具调用必须经过统一网关 `run_tool()`，经过多道护栏。
+#### 持久记忆自动沉淀
 
-#### 当前可用工具集
+当用户请求包含"记住/保存/记录"等持久化意图时，自动从最终答案中提取结构化事实：
 
-| 工具         | 作用                      | 风险 | 约束                                                  |
-| ------------ | ------------------------- | ---- | ----------------------------------------------------- |
-| `list_files` | 列出工作区目录内容        | 只读 | 沙箱隔离环境下，禁止逃逸出当前工作目录                |
-| `read_file`  | 按行范围读取 UTF-8 文件   | 只读 | 行号范围合法，结果自动生成摘要并进入记忆              |
-| `search`     | 在工作区中搜索文本模式    | 只读 | pattern 非空，优先使用 rg（ripgrep），python 兜底     |
-| `run_shell`  | 在当前目录执行 shell 命令 | 高危 | 超时 1-120s，环境变量白名单过滤，防敏感信息泄露       |
-| `write_file` | 写入文本文件              | 高危 | 不能写入目录；写入后使对应文件摘要失效                |
-| `patch_file` | 精确替换文件中一段文本    | 高危 | `old_text` 必须精确出现且仅出现一次，防止模糊修改     |
-| `delegate`   | 派生子 agent 只读调研     | 只读 | 子 agent 只读 + 默认 3 步上限，深度超限后不暴露该工具 |
+**沉淀流程**：
+1. **意图检测**：匹配 `记住/保存/记录/沉淀` 等关键词
+2. **格式匹配**：从答案中逐行提取固定格式（项目约定、决策、依赖、偏好）
+3. **拒绝过滤**：
+   - 空内容
+   - 含 API key/token/secret 等敏感信息
+   - 含 checkpoint 状态字段
+   - 含 stdout/stderr 等噪声输出
+4. **写入**：存入 `.KzCode/memory/topics/` 目录，同名主题自动去重更新
 
+**存储结构**：
 
+```
+.KzCode/memory/
+├── index.json              # 索引：所有条目的元数据汇总
+└── topics/
+    ├── runtime_abc123.json # 主题文件：具体内容
+    ├── logging_def456.json
+    └── config_ghi789.json
+```
+
+**索引文件示例**（`index.json`）：
+
+```json
+{
+  "entries": [
+    {
+      "id": "mem_001",
+      "topic_file": "topics/runtime_abc123.json",
+      "title": "主循环结构",
+      "tags": ["runtime", "control_flow", "ask"],
+      "source_file": "KzCode/runtime.py",
+      "source_hash": "a1b2c3d4e5f6",  // 写入时文件哈希，用于冲突校验
+      "created_at": "2026-07-20T10:00:00Z",
+      "last_accessed": "2026-07-25T14:30:00Z",
+      "decay_weight": 0.85,  // 时间衰减权重
+      "status": "active"     // active / stale
+    }
+  ]
+}
+```
+
+### 四、工具系统：受控执行链与安全隔离
+
+KzCode 将工具层视为**受控执行链**，所有工具调用必须经过统一网关 `run_tool()`，经过多道护栏。
+
+#### 可用工具集
+
+| 工具 | 作用 | 风险级别 | 关键约束 |
+|------|------|---------|----------|
+| `list_files` | 列出工作区目录内容 | 只读 | 沙箱隔离，禁止逃逸 |
+| `read_file` | 按行范围读取文件 | 只读 | 行号合法，自动生成摘要 |
+| `search` | 搜索文本模式 | 只读 | pattern 非空，优先 rg |
+| `run_shell` | 执行 shell 命令 | **高危** | 超时 1-120s，环境变量白名单 |
+| `write_file` | 写入文本文件 | **高危** | 不能写目录，使摘要失效 |
+| `patch_file` | 精确替换文本 | **高危** | old_text 必须唯一出现 |
+| `delegate` | 派生子 agent 调研 | 只读 | 默认 3 步上限，只读模式 |
 
 #### 审批判定流程
 
@@ -290,312 +334,492 @@ KzCode 将工具层视为**受控执行链**，而不是简单的函数映射。
 │ approval_policy  │── ask ──→ 需要审批
 │      == ask?     │── auto ─→ 自动放行
 └──────────────────┘
-
-需要审批
-   │
-   ▼
-SSE approval_request
-   │
-   ▼
-┌──────────────┐  允许
-│ 用户审批     ├─────────→ 自动放行
-│ (600s 超时)  │
-└──────────────┘
-   │ 拒绝或超时
-   ▼
- 拦截
 ```
 
+#### 四层安全护栏
 
-
-#### 权限判定
-
-| 优先级 | 规则 | 命中后果 | 匹配方式 |
+| 优先级 | 规则 | 命中后果 | 实现方式 |
 |--------|------|----------|----------|
-| 1 | **沙箱隔离** | 必须审批 | 路径逃逸检测： 1、拦截包含 .. 父目录引用的路径；2、审核绝对路径是否逃逸；3、审核以 ~ 开头（home 目录）的路径； |
-| 2 | **黑名单** | 必须审批 | `fnmatch` glob 匹配：`git*` `rm*` `del*` `rmdir*` `Remove-Item*` |
-| 3 | **白名单** | 自动放行 | `fnmatch` glob 匹配：`ls*` `cat*` `grep*` `rg*` `find*` |
-| 4 | **是否需要审批** | `ask`→审批； `auto`→放行；`never`→拒绝 | "ask" = 沙箱/黑名单外的常规命令也要问用户<br/>"auto" = 只有沙箱逃逸和黑名单命中的才弹审批，其余静默放行<br/>"never" = 实际类似于官网模式（连读文件都做不了） |
+| **1** | **沙箱隔离** | 必须审批 | • 拦截 `..` 父目录引用<br/>• 审核绝对路径是否逃逸<br/>• 审核 `~` 开头路径 |
+| **2** | **黑名单** | 必须审批 | fnmatch glob 匹配：<br/>`git*` `rm*` `del*` `rmdir*` `Remove-Item*` |
+| **3** | **白名单** | 自动放行 | fnmatch glob 匹配：<br/>`ls*` `cat*` `grep*` `rg*` `find*` |
+| **4** | **审批策略** | 按配置决定 | • `ask`：沙箱/黑名单外也要审批<br/>• `auto`：只审批沙箱逃逸和黑名单<br/>• `never`：拒绝所有写操作 |
 
+#### 环境隔离与敏感信息脱敏
 
-
-#### 环境隔离
+**环境变量白名单**：
 
 ```python
-# run_shell 执行时只传递 allowlist 中的环境变量
-env = {name: os.environ[name] for name in SHELL_ENV_ALLOWLIST if name in os.environ}
+SHELL_ENV_ALLOWLIST = [
+    "PATH", "HOME", "USER", "SHELL", "LANG", 
+    "LC_ALL", "TMPDIR", "TEMP", "TMP"
+]
+
+# run_shell 执行时只传递白名单中的环境变量
+env = {name: os.environ[name] 
+       for name in SHELL_ENV_ALLOWLIST 
+       if name in os.environ}
 env["PWD"] = workspace_root  # 覆盖 PWD
-# SENSITIVE_ENV_NAME_MARKERS = ("API_KEY", "TOKEN", "SECRET", "PASSWORD")
 ```
 
-- 敏感变量值在 trace/report 写入前通过 `redact_text()` / `redact_artifact()` 替换为 `<redacted>`。
-- 敏感信息正则拦截（匹配 `api_key`、`token`、`secret`、`sk-` 等）在记忆沉淀前拦截，防止泄漏到持久化存储。
+**敏感信息脱敏**：
 
+```python
+SENSITIVE_ENV_NAME_MARKERS = (
+    "API_KEY", "TOKEN", "SECRET", "PASSWORD"
+)
 
+# 敏感变量值在 trace/report 写入前替换为 <redacted>
+# 正则拦截：匹配 api_key、token、secret、sk- 等
+# 在记忆沉淀前拦截，防止泄漏到持久化存储
+```
 
-#### 治理效果
+### 五、Checkpoint 恢复机制：中断可续跑
 
-在 11 个治理场景测试下，
+KzCode 采用**双层恢复机制**，保证长任务可中断、可恢复：
 
-- 拦截路径逃逸 3 次，无效参数拒绝 5 次，重复调用拦截 2 次。
-- 固定回归任务通过率 100%，预算内完成率 100%，verifier 通过率 100%。
+#### Session vs Checkpoint
 
+| 机制 | 存储内容 | 使用场景 |
+|------|----------|----------|
+| **Session** | • 会话历史<br/>• 工作记忆 | "下次还能接着聊" |
+| **Checkpoint** | • 任务状态快照<br/>• 当前目标/卡点<br/>• 下一步动作<br/>• 关键文件指纹<br/>• 运行时身份 | "中断后恢复现场" |
 
+#### 恢复场景覆盖
 
-### 5、任务恢复机制
+| 场景 | 恢复策略 |
+|------|----------|
+| **基础恢复** | 完全可用，直接续跑 |
+| **部分状态过期** | 文件摘要失效检测 |
+| **Workspace 漂移** | 指纹不匹配，重建状态 |
+| **工具半成功** | 从安全点恢复 |
 
-KzCode 主要采用了两套任务恢复机制
+### 六、trace 轨迹和 eval 评测闭环
 
-- **Session**：保存会话历史 + 工作记忆 + 长期记忆，**用于"下次还能接着聊"**。
-- **Checkpoint**：保存任务状态快照（当前目标、卡点、下一步、关键文件指纹、运行身份），**用于"中断后恢复现场"**。
+每次 `ask()` 调用会在 `.KzCode/runs/{run_id}/` 下生成完整的轨迹，实现**可审计、可评测**。
 
+#### trace.jsonl 事件类型
 
+`trace.jsonl` 是 **JSON Lines 格式**（每行一个独立 JSON 对象），记录运行时所有关键事件：
 
-#### 运行时身份
+```jsonl
+{"event": "run_started", "run_id": "run_001", "task_id": "task_001", "timestamp": "..."}
+{"event": "prompt_built", "attempt": 1, "prompt_metadata": {"prefix_len": 3600, "total_prompt_chars": 4120}}
+{"event": "model_requested", "model": "gpt-4", "cache_hit": false, "input_tokens": 1500}
+{"event": "model_parsed", "kind": "tool", "tool_name": "read_file"}
+{"event": "tool_executed", "tool_name": "read_file", "status": "success", "affected_paths": ["main.py"]}
+{"event": "run_finished", "status": "completed", "stop_reason": "final_answer_returned"}
+```
 
-checkpoint 保存时记录 11 个身份字段。恢复时逐一比对，任何字段不匹配即判定为 `workspace-mismatch`，避免误信旧状态继续执行。
+**事件分类**：
+- **生命周期**：`run_started`、`run_finished`
+- **推理与上下文**：`prompt_built`、`model_requested`、`model_parsed`
+- **工具执行**：`tool_executed`、`tool_rejected`
+- **状态持久化**：`checkpoint_created`、`memory_updated`
+- **异常重试**：`retry_triggered`
 
-| 字段 | 含义 |
-|------|------|
-| `cwd` | 工作区当前目录 |
-| `model` | 模型标识（如 `gpt-4`、`claude-sonnet-4`） |
-| `model_client` 类名 | 模型客户端类（如 `OpenAIClient`） |
-| `approval_policy` | 审批策略（`ask`/`auto`/`never`） |
-| `read_only` | 是否只读模式 |
-| `max_steps` | 最大工具迭代步数 |
-| `max_new_tokens` | 模型输出最大 token 数 |
-| `feature_flags` | 特性开关：`memory`、`relevant_memory`、`context_reduction`、`prompt_cache` |
-
-
-
-#### 覆盖场景
-
-多个恢复场景（基础恢复、部分状态过期、工具半成功恢复等）。
-
-恢复成功率 **100%**，无误信旧状态继续执行的情况。
-
-
-
-### 6、运行工件与评测闭环
-
-每次 `ask()` 调用会在 `.KzCode/runs/{run_id}/` 下写入：
-
-| 工件                 | 格式     | 内容                                         |
-| -------------------- | -------- | -------------------------------------------- |
-| `task_state.json`    | JSON     | 运行状态机快照（步数、状态、进度、停止原因、checkpoint_id） |
-| `trace.jsonl`        | JSONL    | 逐事件时间线（prompt 组装、模型调用、工具执行、前缀缓存命中、预算裁剪日志） |
-| `report.json`        | JSON     | 运行摘要（最终答案、指标、记忆沉淀记录、secret env 摘要） |
-
-
-
-#### 工作区快照 Diff
-
-每次高风险工具执行前后，对整个工作区做文件级别的快照（相对路径 → SHA256 + UTF-8 文本缓存），再对比前后差异生成 unified diff：
-
-- **Snapshot 范围**：递归扫描工作区全部文件，跳过 `.git` / `node_modules` / `__pycache__` / `.venv` 等忽略目录。
-- **变更检测**：文件缺失 / 新增 / hash 变化三种状态，仅检测UTF-8 文本（二进制跳过）。
-- **Diff 预览**：基于 `difflib.SequenceMatcher` 生成 unified diff，含上下文行。上限 `MAX_DIFF_PREVIEW_FILES=20`、`MAX_DIFF_PREVIEW_LINES=1000`、`MAX_DIFF_SNAPSHOT_BYTES=256KB`。
-- 变更结果写入 `trace.jsonl` 和 `report.json`，同时通过 SSE 推送给前端实时展示。
-
-
-
-#### 多层评测
+#### 多层评测体系
 
 KzCode 将评测拆成多层，不混成一个总分：
 
-- **Harness regression**：固定任务集，验证运行时合同稳定性（工具、预算、verifier）。
-- **上下文治理**：压缩率、当前请求是否被裁坏。
-- **记忆收益**：重复读文件次数、follow-up 工具步数。
-- **恢复正确性**：恢复成功率、漂移识别率、误信旧状态次数。
-- **模型后端对照**：同一任务在不同 provider（OpenAI / Anthropic / Ollama / DeepSeek）上的 pass rate / attempts / tool_steps。
+| 评测层 | 评估内容 | 关键指标 |
+|--------|----------|----------|
+| **Harness 回归** | 运行时合同稳定性 | 通过率、预算内完成率、verifier 通过率 |
+| **上下文治理** | 压缩效果 | 压缩率、当前请求是否被裁坏 |
+| **记忆收益** | 减少重复操作 | 重复读文件次数、工具步数 |
+| **恢复正确性** | 断点续跑能力 | 恢复成功率、漂移识别率 |
+| **模型后端对照** | 多模型表现 | 不同 provider 的 pass rate / attempts / tool_steps |
 
+### 七、多模型聚合
 
+KzCode 不绑定特定模型提供商，支持通过统一接口切换后端。
 
-### 7、多模型聚合
+#### 支持的模型提供商
 
-KzCode 不绑定特定模型提供商，支持通过统一接口切换后端：
+支持自定义模型提供商，兼容多种格式
 
-| 提供商        | 协议         | 配置方式                      |
-| ------------- | ------------ | ----------------------------- |
-| OpenAI        | OpenAI 兼容  | API Key + Base URL            |
-| Anthropic     | Anthropic 消息 API | API Key + Base URL      |
-| DeepSeek      | OpenAI 兼容  | API Key + Base URL            |
-| Ollama        | Ollama API   | Host URL，本地模型            |
+| 提供商 | 协议 | 配置方式 | 特点 |
+|--------|------|----------|------|
+| **OpenAI** | OpenAI 兼容 | API Key + Base URL | GPT-4、GPT-4-turbo 等 |
+| **Anthropic** | Anthropic 消息 API | API Key + Base URL | Claude Sonnet、Opus 等 |
 
-所有模型客户端共享同一组调用接口，Agent 运行时无需感知底层模型差异。
+#### 统一抽象层
 
+所有模型客户端共享同一组调用接口，Agent 运行时无需感知底层模型差异：
 
+**切换模型**：只需修改配置文件或环境变量，无需改动代码。
 
-### 8、SSE 流式事件系统与审计
+#### 错误码归一化
 
-`POST /api/chat-stream` 端点将 KzCode 控制循环与前端实时同步。通过 `_stream_agent_response()` 在独立线程中运行 `agent.ask()`，通过事件队列向 SSE 流推送 7 种事件类型：
+统一错误码，捕获并逐层向上抛出用户友好的报错信息，日志留痕，拒绝泄露系统实现；
 
-| 事件              | 触发时机                     | 关键载荷                                     |
-| ----------------- | ---------------------------- | -------------------------------------------- |
-| `chunk`           | 流式文本增量                  | `{text}`                                     |
-| `tool_call`       | 工具开始执行                  | `{tool_call_id, name, args, sequence}`       |
-| `tool_result`     | 工具执行完成                  | `{tool_call_id, status, content, workspace_changed, affected_paths, diff_summary, diff_preview, tool_error_code}` |
-| `approval_request`| 高危工具需审批                | `{approval_id, toolName, args, status}`      |
-| `assistant_notice`| 进度通知 / 异常通知           | `{content, thinking}`                         |
-| `done`            | ask() 返回最终答案            | `{content}`                                  |
-| `error`           | 不可恢复错误                  | `{message}`                                  |
+### 八、SSE 流式事件系统
 
+`POST /api/chat-stream` 端点通过 **Server-Sent Events (SSE)** 将 Agent 控制循环与前端实时同步。
 
+#### 事件类型
 
-#### Hooked Record 模式
+| 事件 | 触发时机 |
+|------|----------|
+| `chunk` | 流式文本增量 |
+| `tool_call` | 工具开始执行 |
+| `tool_result` | 工具执行完成 |
+| `approval_request` | 高危工具需审批 |
+| `assistant_notice` | 进度通知 / 异常通知 |
+| `done` | 返回最终答案 |
+| `error` | 不可恢复错误 |
 
-核心思想：不修改 agent 核心代码，而是在运行前用钩子函数替换 record() 方法，避免耦合。
+#### Hook 机制
 
-`hooked_record()` 拦截 agent 的 `record()` 方法，在每次工具执行结果写入 history 时同步生成 SSE 事件和审计记录：
+**核心思想**：不修改 agent 核心代码，而是在运行前用钩子函数替换 `record()` 方法，避免耦合。
 
-- 记录工具执行时间线（tool_call_id、开始时间、完成时间、状态、diff 摘要）。
-- 记录审批请求时间线（approval_id、状态、解决时间）。
-- 审计事件持久化到 `session.json`，供前端查询回放。
+```python
+# 运行前注入钩子
+original_record = agent.record
+agent.record = hooked_record
 
-
-
-## 前端：桌面应用
-
-前端基于 **Electron + Vue 3 + Pinia + Element Plus**，提供原生桌面体验。
-
-- **会话与流式对话**
-- **工具执行与审批**
-- **文件变更 Diff**
-- **@引用文件及上传文件附件功能**
-
-- **项目文件树与文件编辑器**
-
-- **Git 集成**
-
-- **设置与主题**
-
-
-
-## 技术栈
-
-| 层级     | 技术                                         |
-| -------- | -------------------------------------------- |
-| **后端** | Python 3.10+、FastAPI、Pydantic、uv          |
-| **前端** | Electron、Vue 3、Vite 6、Pinia、Element Plus |
-| **协议** | HTTP + SSE（流式）、Electron IPC（文件系统） |
-| **测试** | pytest                                       |
-
-
-
-## 项目结构
-
+def hooked_record(entry):
+    # 拦截每次工具执行结果写入 history 时
+    original_record(entry)  # 先调用原方法
+    
+    # 同步生成 SSE 事件
+    if entry["role"] == "tool":
+        event_queue.put({
+            "type": "tool_result",
+            "data": {...}
+        })
+    
+    # 持久化到审计日志
+    audit_timeline.append({
+        "timestamp": now(),
+        "event": entry
+    })
 ```
-KzCodeDesktop/                    # Electron 前端
-├── src/
-│   ├── main/index.js             # Electron 主进程（窗口 + IPC + 后端管理）
-│   ├── preload/index.js          # contextBridge 暴露安全 API
-│   └── renderer/
-│       ├── src/
-│       │   ├── App.vue           # 根组件
-│       │   ├── views/ChatView/   # 主视图
-│       │   ├── store/            # Pinia（session、theme、approval）
-│       │   ├── services/api.js   # HTTP + SSE 通信
-│       │   ├── components/
-│       │   │   ├── chat/         # ChatPanel、MessageItem、InputArea、ModelPicker
-│       │   │   ├── session/      # SessionSidebar
-│       │   │   ├── layout/       # HeaderBar、SettingsDialog、RuntimeBanner
-│       │   │   ├── approval/     # ApprovalPanel
-│       │   │   ├── diff/         # DiffViewer、FileEditPreview
-│       │   │   ├── mention/      # MentionDropdown
-│       │   │   └── system/       # ToastStack、ConfirmDialog、ProcessingIndicator
-│       │   ├── composables/      # useMention
-│       │   ├── constants/        # models.js
-│       │   ├── utils/            # assistantText.js
-│       │   └── assets/themes/    # 12 套 CSS 主题
-│       └── vite.config.js
-├── electron.vite.config.mjs
-└── package.json
 
-KzCode/                           # Python 后端
-├── app/
-│   ├── main.py                   # FastAPI HTTP + SSE 服务器
-│   ├── runtime.py                # Agent Harness 核心控制循环（KzCode 类）
-│   ├── context_manager.py        # 上下文管理（section 预算裁剪）
-│   ├── memory.py                 # 分层记忆（LayeredMemory + DurableMemoryStore）
-│   ├── tools.py                  # 工具定义与执行（list/read/search/shell/write/patch/delegate）
-│   ├── task_state.py             # 运行状态机快照
-│   ├── run_store.py              # 运行工件持久化（task_state/trace/report）
-│   ├── workspace.py              # 工作区快照（Git 状态 + 文件树 + 项目文档）
-│   ├── models.py                 # 多模型客户端（OpenAI/Anthropic/Ollama/DeepSeek）
-│   ├── config.py                 # 配置加载
-│   └── cli.py                    # CLI 入口
-├── tests/                        # 测试套件（含安全、记忆、上下文、恢复等）
-└── pyproject.toml
+**好处**：
+- 不侵入 Agent 核心逻辑
+- SSE 推送与审计持久化同步进行
+- 支持热插拔（测试时可不挂钩子）
+
+
+
+## 前端：Electron 桌面应用
+
+前端基于 **Electron + Vue 3 + Pinia + Element Plus**，提供原生桌面体验，将 Agent 能力以直观的交互形式呈现。
+
+### 一、技术栈
+
+| 层级 | 技术 |
+|------|------|
+| **桌面框架** | Electron 33 |
+| **前端框架** | Vue 3 (Composition API) |
+| **构建工具** | Vite 6 + electron-vite |
+| **状态管理** | Pinia |
+| **UI 组件** | Element Plus |
+| **样式** | CSS Variables（12 套主题） |
+| **通信协议** | HTTP + SSE（流式）、Electron IPC（文件系统） |
+
+### 二、核心功能
+
+#### 会话与流式对话
+
+**会话管理**：
+
+- 左侧边栏展示所有会话
+- 支持新建、重命名、删除、固定会话
+- 会话列表按更新时间排序
+- 固定会话置顶显示
+
+**流式对话**：
+- 实时接收 SSE 事件流
+- 支持 Markdown 渲染（代码高亮、表格、列表）
+- 打字机效果显示 AI 回复
+- 工具调用实时展示（折叠/展开）
+
+#### 工具执行与审批
+
+**工具执行面板**：
+- 显示工具名称、参数、执行状态
+- 成功/失败状态用不同颜色标识
+- 支持查看完整的工具输出
+- 显示受影响的文件列表
+
+**审批流程**：
 ```
+高危工具调用
+      ↓
+SSE approval_request 事件
+      ↓
+前端弹出审批面板
+  • 工具名称
+  • 参数预览
+  • 风险提示
+      ↓
+用户选择：允许 / 拒绝
+      ↓
+POST /api/approval/{approval_id}
+      ↓
+后端继续执行 / 拦截
+```
+
+**审批面板特性**：
+- 600 秒超时（自动拒绝）
+- 参数 JSON 格式化显示
+- 高危命令高亮提示
+- 支持批量审批（记住选择）
+
+#### 文件变更 Diff 预览
+
+**Diff 查看器**：
+- Unified diff 格式展示
+- 语法高亮（基于文件扩展名）
+- 增删行用不同背景色标识
+  - 新增行：绿色背景
+  - 删除行：红色背景
+  - 上下文行：默认背景
+- 支持折叠/展开大文件 diff
+- 显示变更文件数量和行数统计
+
+**实时推送**：
+- 工具执行完成后立即推送 diff
+- SSE `tool_result` 事件携带 `diff_preview`
+- 前端自动解析并渲染
+
+#### @引用文件与附件上传
+
+**@引用机制**：
+```
+用户输入：修改 @src/main.py 的日志格式
+           ↓
+前端检测 @ 符号
+           ↓
+弹出文件选择下拉菜单
+  • 最近打开的文件
+  • 当前项目文件树
+           ↓
+选择文件后插入路径
+           ↓
+发送时提取 @文件路径
+           ↓
+后端自动读取文件内容注入上下文
+```
+
+**附件上传**：
+
+- 支持拖拽上传文件
+- 支持点击选择文件
+- 图片附件缩略图预览
+- 文本附件内容读取后注入上下文
+
+#### 项目文件树与内置编辑器
+
+**文件树**：
+- 递归展示项目目录结构
+- 支持展开/折叠文件夹
+- 文件图标（基于扩展名）
+- 右键菜单：
+  - 在编辑器中打开
+  - 复制路径
+  - 在文件管理器中显示
+- 搜索过滤文件
+
+**内置编辑器**：
+- 基于 Monaco Editor（VS Code 同款）
+- 语法高亮（支持 50+ 语言）
+- 代码补全
+- 快捷键：Ctrl+S 保存
+- 支持多标签页
+- Diff 模式（对比修改前后）
+
+#### Git 集成
+
+**Git 状态展示**：
+- 当前分支名称
+- 未暂存/已暂存文件列表
+- 文件变更状态图标（M/A/D/?）
+
+**Git 操作**：
+- 查看 diff
+- Stage/Unstage 文件
+- Commit（带消息输入）
+- 查看提交历史
+- 切换分支
+
+**实现方式**：
+
+- Electron 主进程调用 `simple-git` 库
+- 通过 IPC 与渲染进程通信
+- 前端通过 `window.api.git.*` 调用
+
+#### 设置与主题
+
+**设置面板**：
+
+- 模型配置：
+  - 选择模型提供商（OpenAI/Anthropic/DeepSeek/Ollama）
+  - API Key 输入
+  - Base URL 配置
+  - 模型选择器
+- 工具权限：
+  - 审批策略（ask/auto/never）
+  - 只读模式开关
 
 
 
 ## 快速开始
 
-### 后端
+### 一、环境要求
+
+| 依赖 | 版本要求 |
+|------|---------|
+| **Python** | 3.10+ |
+| **Node.js** | 18+ |
+| **npm** | 9+ |
+| **uv** | 最新版（Python 包管理器） |
+
+### 二、后端启动
 
 ```bash
+# 进入后端目录
 cd KzCode
-uv sync                     # 安装 Python 依赖
+
+# 安装 Python 依赖
+uv sync
+
+# 启动 API 服务器（默认端口 11435）
 uv run python -m app.api_server --port 11435
+
+# 或使用 CLI 模式
+uv run python -m app.cli
 ```
 
-### 前端
+**配置模型**：
+
+在 `KzCode/.env` 文件中配置 API Key：
 
 ```bash
+# OpenAI
+OPENAI_API_KEY=sk-...
+OPENAI_BASE_URL=https://api.openai.com/v1
+
+# Anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+
+# DeepSeek
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+# Ollama（本地）
+OLLAMA_HOST=http://localhost:11434
+```
+
+### 三、前端启动
+
+```bash
+# 进入前端目录
+cd KzCodeDesktop
+
 # 安装 Node 依赖
 npm install
-```
 
-```bash
 # 开发模式（Electron 桌面应用，自动启动后端）
 npm run dev:electron
-```
 
-```bash
 # 开发模式（仅 Web，无 Electron）
 npm run dev       # → http://localhost:5173
-```
 
-```bash
 # 生产构建
 npm run build:electron
 ```
 
-### 打包
+### 四、运行测试
 
-项目打包分两层：**后端**用 PyInstaller 编译成独立 exe，**前端**用 electron-builder 打成安装包（自动包含后端 exe）。
+```bash
+cd KzCode
+
+# 运行所有测试
+uv run pytest
+
+# 运行特定测试
+uv run pytest tests/test_context_manager.py
+uv run pytest tests/test_memory.py
+uv run pytest tests/test_safety_invariants.py
+
+# 查看覆盖率
+uv run pytest --cov=app --cov-report=html
+```
+
+### 五、打包发布
+
+项目打包分两层：**后端**用 PyInstaller 编译成独立 exe，**前端**用 electron-builder 打成安装包。
 
 #### 后端打包
 
-将 Python 源码编译为单文件可执行程序，用户无需安装 Python 运行时。
-
 ```bash
-# 使用 PyInstaller 打包 → backend-dist/KzCodeBackend.exe
+cd KzCode
+
+# Windows
+powershell.exe -File scripts/package-backend.ps1
+
+# macOS/Linux
 bash scripts/package-backend.sh
+
+# 输出：backend-dist/KzCodeBackend.exe（或二进制文件）
 ```
 
 #### 前端打包
 
-将 Electron + Vue 前端连同后端 exe 一起打成 Windows 安装包。
-
 ```bash
-# 1. 先构建前端 → out/
+cd KzCodeDesktop
+
+# 1. 先构建前端
 npm run build:electron
 
-# 2. 打包安装程序 → dist/KzCode Setup x.x.x.exe
+# 2. 打包安装程序
 npm run package
+
+# 输出：dist/KzCode Setup x.x.x.exe（Windows）
+#      dist/KzCode-x.x.x.dmg（macOS）
 ```
 
-`electron-builder` 配置中通过 `extraResources` 自动将 `backend-dist/` 目录嵌入安装包，Electron 主进程启动时直接运行内置的 `KzCodeBackend.exe`，最终交付一个 `.exe` 安装包即可。
+**electron-builder** 配置中通过 `extraResources` 自动将 `backend-dist/` 目录嵌入安装包，最终交付一个独立的安装包。
 
 
 
-## 总结
+## 最近更新和计划
 
-KzCode 不是"聊天 + 文件读写"的简单组合，而是一个**工程化的本地代码智能体系统**：
+最近更新
 
-- **后端**：实现了 Agent Harness 的核心——上下文分层治理与预算裁剪、结构化记忆与过期淘汰、工具执行安全隔离、检查点恢复与运行时身份校验、可审计的运行工件体系。这些设计使其在多轮长链路任务中能够保持稳定、可控、可复盘。多模型后端抽象使应用不绑定特定 AI 提供商。
+- 新增了模型交互跟踪可视化展示页面；
+- 新增了评测结果可视化展示页面；
+- 新增了 plan 模式，目前支持 ask/agent/plan 三种模式运行；
+- 接入了 Skills 能力；
+- ......
 
-- **前端**：通过 Electron 提供原生桌面体验，将 Agent 能力以流式对话、工具执行面板、审批控制、Diff 文件变更预览、项目文件树与 Git 集成等形式直观呈现，同时内置文件编辑器、@文件引用、附件上传等便捷交互。
+短期计划
 
+- 接入 MCP 工具；
+- 实现运行轨迹的可视化展示；
+- 实现长期记忆的可视化展示，并允许用户自行增删改；
+- ......
+
+长期计划
+
+- 基于 TS 重构 Harness 运行时，移除 Python 实现，基于 electron-update 实现从云端拉取增量更新、热更新，可避免 Python 打包无法跨平台和安装包分发困难问题，减少安装包体积；
+- 将部分功能迁移至云端，Python 替换为本地 TS + 云端 Java/Go 的架构；
+- 实现 Tab 自动补全功能；
+- 前端优化；
+- ......
+
+模型交互追踪可视化
+
+![模型交互追踪可视化](./assets/%E6%A8%A1%E5%9E%8B%E4%BA%A4%E4%BA%92%E8%BF%BD%E8%B8%AA%E5%8F%AF%E8%A7%86%E5%8C%96-5173322.png)
+
+评测可视化
+
+![评测可视化](./assets/%E8%AF%84%E6%B5%8B%E5%8F%AF%E8%A7%86%E5%8C%96.png)
+
+Skills
+
+![Skills](./assets/Skills.png)
