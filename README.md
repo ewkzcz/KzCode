@@ -814,12 +814,12 @@ npm run package
 
 模型交互追踪可视化
 
-![模型交互追踪可视化](./assets/%E6%A8%A1%E5%9E%8B%E4%BA%A4%E4%BA%92%E8%BF%BD%E8%B8%AA%E5%8F%AF%E8%A7%86%E5%8C%96-5173322.png)
+![模型交互追踪可视化](./%E6%A8%A1%E5%9E%8B%E4%BA%A4%E4%BA%92%E8%BF%BD%E8%B8%AA%E5%8F%AF%E8%A7%86%E5%8C%96.png)
 
 评测可视化
 
-![评测可视化](./assets/%E8%AF%84%E6%B5%8B%E5%8F%AF%E8%A7%86%E5%8C%96.png)
+![评测可视化](./%E8%AF%84%E6%B5%8B%E5%8F%AF%E8%A7%86%E5%8C%96.png)
 
 Skills
 
-![Skills](./assets/Skills.png)
+![Skills](./Skills.png)
